@@ -10,7 +10,7 @@ const RegisterScreen = ({ navigation }) => {
 
     const register = async () => {
         try {
-            const res = await axios.post('http://localhost:5000/api/auth/register', {
+            const res = await axios.post('http://127.0.0.1:5000/api/auth/register', {
                 username,
                 email,
                 password,
