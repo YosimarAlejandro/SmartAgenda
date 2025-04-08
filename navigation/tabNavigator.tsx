@@ -2,9 +2,9 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, StyleSheet } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { Calendario } from '../screens/Contenido/Calendario';
 import Perfil from '../screens/Contenido/Perfil';
-
+import TareasScreen from '../screens/Contenido/TareasScreen';
+import ResponderTareaScreen from '../screens/Contenido/ResponderTareaScreen';
 const Tab = createBottomTabNavigator();
 
 export default function MyTabs() {
@@ -16,9 +16,11 @@ export default function MyTabs() {
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
 
-          if (route.name === 'Calendario') {
+          if (route.name === 'TareasScreen') {
             iconName = 'calendar-month'; // Ícono para la pestaña Calendario
           } else if (route.name === 'Perfil') {
+            iconName = 'account-circle'; // Ícono para la pestaña Perfil
+          }else if (route.name === 'ResponderTareaScreen') {
             iconName = 'account-circle'; // Ícono para la pestaña Perfil
           }
 
@@ -43,7 +45,8 @@ export default function MyTabs() {
         tabBarInactiveTintColor: 'white',
       })}
     >
-      <Tab.Screen name="Calendario" component={Calendario} />
+      <Tab.Screen name="TareasScreen" component={TareasScreen} />
+      <Tab.Screen name="ResponderTareaScreen" component={ResponderTareaScreen} />
       <Tab.Screen name="Perfil" component={Perfil} />
     </Tab.Navigator>
   );
