@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ActivityIndicator, FlatList } from "react-nativ
 import { AuthContext } from "../../context/AuthContext";
 import axios from "axios";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Progress from 'react-native-progress'; // Importamos la librería
 
 const Perfil = () => {
   const auth = useContext(AuthContext);
@@ -12,6 +13,7 @@ const Perfil = () => {
   // Estado para el progreso
   const [progress, setProgress] = useState<any[]>([]);
   const [progressLoading, setProgressLoading] = useState(true);
+  const [totalPuntaje, setTotalPuntaje] = useState<number>(0);
 
   // Simulación de carga de datos del usuario
   useEffect(() => {
@@ -31,19 +33,26 @@ const Perfil = () => {
   useEffect(() => {
     const fetchProgress = async () => {
       try {
-        // Se obtiene el token de AsyncStorage
         const token = await AsyncStorage.getItem('token');
         if (!auth?.user || !token) {
           setProgressLoading(false);
           return;
         }
         
-        // Se llama al endpoint, usando el id del usuario obtenido del contexto
+        // Obtener el progreso de las tareas completadas por el usuario
         const response = await axios.get(
           `http://127.0.0.1:5000/api/progreso/progreso/${auth.user.id}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        setProgress(response.data); // Se asume que la respuesta es un arreglo
+        setProgress(response.data); // Establecemos el progreso del usuario
+
+        // Llamamos al endpoint para obtener el resumen del progreso
+        const resumenResponse = await axios.get(
+          `http://127.0.0.1:5000/api/progreso/${auth.user.id}/resumen`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setTotalPuntaje(resumenResponse.data.totalPuntaje); // Establecemos el puntaje total
+
       } catch (err: any) {
         console.error("Error al cargar el progreso:", err?.response?.data || err.message);
       } finally {
@@ -71,6 +80,9 @@ const Perfil = () => {
     );
   }
 
+  // Calculamos el porcentaje de progreso, suponiendo un puntaje máximo de 100
+  const progressPercentage = totalPuntaje / 100;
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Perfil</Text>
@@ -91,20 +103,32 @@ const Perfil = () => {
         ) : progress.length === 0 ? (
           <Text style={styles.text}>No tienes progreso registrado.</Text>
         ) : (
-          <FlatList
-            data={progress}
-            keyExtractor={(item) => item._id}
-            renderItem={({ item }) => (
-              <View style={styles.progressItem}>
-                {/* Se asume que 'id_tarea' viene poblado con al menos el campo 'pregunta' */}
-                <Text style={styles.text}>Tarea: {item.id_tarea?.pregunta || "Sin título"}</Text>
-                <Text style={styles.text}>Puntaje: {item.puntaje}</Text>
-                <Text style={styles.text}>
-                  Fecha: {new Date(item.fecha_progreso).toLocaleString()}
-                </Text>
-              </View>
-            )}
-          />
+          <>
+            {/* Barra de progreso */}
+            <Text style={styles.text}>Puntaje Total: {totalPuntaje} / 100</Text>
+            <Progress.Bar 
+              progress={progressPercentage} 
+              width={null} 
+              height={20} 
+              color="dodgerblue" 
+              borderWidth={0} 
+              style={styles.progressBar} 
+            />
+            {/* Lista de tareas completadas */}
+            <FlatList
+              data={progress}
+              keyExtractor={(item) => item._id}
+              renderItem={({ item }) => (
+                <View style={styles.progressItem}>
+                  <Text style={styles.text}>Tarea: {item.id_tarea?.pregunta || "Sin título"}</Text>
+                  <Text style={styles.text}>Puntaje: {item.puntaje}</Text>
+                  <Text style={styles.text}>
+                    Fecha: {new Date(item.fecha_progreso).toLocaleString()}
+                  </Text>
+                </View>
+              )}
+            />
+          </>
         )}
       </View>
     </View>
@@ -143,7 +167,10 @@ const styles = StyleSheet.create({
     elevation: 1,
     width: "100%",
   },
+  progressBar: {
+    marginVertical: 20,
+    width: "100%",
+  }
 });
-
 
 export default Perfil;
