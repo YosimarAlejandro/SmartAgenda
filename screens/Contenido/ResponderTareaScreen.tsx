@@ -1,36 +1,63 @@
-// ResponderTareaScreen.tsx
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet, Button } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+
+
 const ResponderTareaScreen = ({ route, navigation }) => {
-  const { tarea } = route.params;  // La tarea seleccionada
+  const { tarea } = route.params;
   const [respuesta, setRespuesta] = useState('');
   const [loading, setLoading] = useState(false);
+  const [tareaActual, setTareaActual] = useState(tarea);
+  const [tareaRespondida, setTareaRespondida] = useState(false); // Nuevo estado para mostrar el botón
+  const [siguienteTarea, setSiguienteTarea] = useState(null);
+
+  useEffect(() => {
+    if (route.params?.tarea) {
+      setTareaActual(route.params.tarea);
+      setRespuesta('');
+      setTareaRespondida(false); // Reinicia cuando la tarea cambie
+    }
+  }, [route.params?.tarea]);
 
   const handleResponder = async () => {
     if (!respuesta.trim()) {
-      Alert.alert('Debes ingresar una respuesta');
+      alert('¡Error! Debes ingresar una respuesta');
       return;
     }
     setLoading(true);
-    try {
-      // Obtener el token almacenado
-      const token = await AsyncStorage.getItem('token');
 
-      // Realizar la petición para responder la tarea
+    try {
+      const token = await AsyncStorage.getItem('token');
       const res = await axios.post(
-        `http://127.0.0.1:5000/api/tarea/${tarea._id}/responder`,
+        `http://127.0.0.1:5000/api/tarea/${tareaActual._id}/responder`,
         { respuesta },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+
+      console.log('📤 Respuesta completa del backend:', res.data);
+
+      const { mensaje, siguiente_dificultad, siguiente_tarea } = res.data;
+
+      if (siguiente_tarea) {
+        setSiguienteTarea(siguiente_tarea); // Guarda la siguiente tarea real
+      }
       
-      Alert.alert('Resultado', res.data.mensaje);
-      navigation.goBack(); // Regresa a la lista de tareas o a la pantalla anterior
+      if (siguiente_dificultad) {
+        console.log('🎯 Siguiente dificultad sugerida:', siguiente_dificultad);
+      }
+      
+      // ✅ Mostrar botón siempre que se haya respondido correctamente
+      setTareaRespondida(true);
+      
+
     } catch (error) {
-      console.error(error);
-      Alert.alert('Error', 'Hubo un problema al enviar tu respuesta');
+      console.error('❌ Error al responder tarea:', error);
+      if (axios.isAxiosError(error) && error.response) {
+        console.error('❌ Detalle del error:', error.response.data);
+      }
+      alert('¡Error! Hubo un problema al enviar tu respuesta');
     } finally {
       setLoading(false);
     }
@@ -39,16 +66,49 @@ const ResponderTareaScreen = ({ route, navigation }) => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Responder Tarea</Text>
-      <Text style={styles.question}>{tarea.pregunta}</Text>
+
+      {/* Asegúrate de que la tarea esté bien definida */}
+      {tareaActual ? (
+        <Text style={styles.question}>{tareaActual.pregunta}</Text>
+      ) : (
+        <Text style={styles.question}>Cargando tarea...</Text>
+      )}
+
       <TextInput
         style={styles.input}
         placeholder="Ingresa tu respuesta"
         value={respuesta}
         onChangeText={setRespuesta}
       />
+
       <TouchableOpacity onPress={handleResponder} style={styles.button}>
         {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Enviar Respuesta</Text>}
       </TouchableOpacity>
+
+      {/* Muestra el botón después de responder */}
+      {tareaRespondida && (
+        <View style={styles.responseContainer}>
+          <Text style={styles.responseText}>¡Respuesta enviada con éxito!</Text>
+          <Button
+            title="Ir a la siguiente tarea"
+            onPress={() => {
+              if (siguienteTarea) {
+                navigation.navigate('ResponderTareaScreen', { tarea: siguienteTarea });
+              } else {
+                alert('No hay más tareas por ahora 😊');
+              }
+            }}
+          />
+
+
+
+          <Button
+            title="Volver al inicio"
+            onPress={() => navigation.navigate('TareasScreen')}
+            color="red"
+          />
+        </View>
+      )}
     </View>
   );
 };
@@ -62,4 +122,6 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderColor: '#ccc', padding: 10, marginBottom: 16, borderRadius: 8 },
   button: { backgroundColor: 'dodgerblue', padding: 16, borderRadius: 8, alignItems: 'center' },
   buttonText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  responseContainer: { marginTop: 20, alignItems: 'center' },
+  responseText: { fontSize: 18, fontWeight: 'bold', marginBottom: 10 },
 });

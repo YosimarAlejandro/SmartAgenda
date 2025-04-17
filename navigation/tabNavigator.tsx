@@ -20,8 +20,6 @@ export default function MyTabs() {
             iconName = 'calendar-month'; // Ícono para la pestaña Calendario
           } else if (route.name === 'Perfil') {
             iconName = 'account-circle'; // Ícono para la pestaña Perfil
-          }else if (route.name === 'ResponderTareaScreen') {
-            iconName = 'account-circle'; // Ícono para la pestaña Perfil
           }
 
           return (
@@ -46,7 +44,7 @@ export default function MyTabs() {
       })}
     >
       <Tab.Screen name="TareasScreen" component={TareasScreen} />
-      <Tab.Screen name="ResponderTareaScreen" component={ResponderTareaScreen} />
+      {/* <Tab.Screen name="ResponderTareaScreen" component={ResponderTareaScreen} /> */}
       <Tab.Screen name="Perfil" component={Perfil} />
     </Tab.Navigator>
   );
