@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet, Button } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Speech from 'expo-speech'; //este es el mpdulo de la lectura
+import * as Speech from 'expo-speech';
+import MascotaVirtual from '../../components/MascotaVirtual';
 
 const ResponderTareaScreen = ({ route, navigation }) => {
   const { tarea } = route.params;
@@ -11,16 +12,24 @@ const ResponderTareaScreen = ({ route, navigation }) => {
   const [tareaActual, setTareaActual] = useState(tarea);
   const [tareaRespondida, setTareaRespondida] = useState(false);
   const [siguienteTarea, setSiguienteTarea] = useState(null);
+  const [mensajeMascota, setMensajeMascota] = useState('');
+  const [emocionMascota, setEmocionMascota] = useState('feliz');
+  const [mostrarMascota, setMostrarMascota] = useState(true);
 
   useEffect(() => {
     if (route.params?.tarea) {
       setTareaActual(route.params.tarea);
       setRespuesta('');
       setTareaRespondida(false);
+      setMensajeMascota('¡Vamos! Lee con atención la pregunta 📖');
+      setEmocionMascota('hablando');
     }
   }, [route.params?.tarea]);
 
-  // 👂 Función para leer en voz alta la pregunta
+  useEffect(() => {
+    leerPregunta();
+  }, [tareaActual]);
+
   const leerPregunta = () => {
     if (tareaActual?.pregunta) {
       Speech.speak(tareaActual.pregunta, {
@@ -31,17 +40,15 @@ const ResponderTareaScreen = ({ route, navigation }) => {
     }
   };
 
-  // 🔁 Leer automáticamente la pregunta al cargar alo mejor y los quitamos quiensabe 😵‍💫
-  useEffect(() => {
-    leerPregunta();
-  }, [tareaActual]);
-
   const handleResponder = async () => {
     if (!respuesta.trim()) {
       alert('¡Error! Debes ingresar una respuesta');
       return;
     }
+
     setLoading(true);
+    setEmocionMascota('hablando');
+    setMensajeMascota('¡Estoy revisando tu respuesta! 🔍');
 
     try {
       const token = await AsyncStorage.getItem('token');
@@ -53,22 +60,31 @@ const ResponderTareaScreen = ({ route, navigation }) => {
 
       console.log('📤 Respuesta completa del backend:', res.data);
 
-      const { mensaje, siguiente_dificultad, siguiente_tarea } = res.data;
+      const { mensaje, siguiente_dificultad, siguiente_tarea, correcto } = res.data;
 
-      if (siguiente_tarea) {
-        setSiguienteTarea(siguiente_tarea);
-      }
-
-      if (siguiente_dificultad) {
-        console.log('🎯 Siguiente dificultad sugerida:', siguiente_dificultad);
-      }
+      if (siguiente_tarea) setSiguienteTarea(siguiente_tarea);
+      if (siguiente_dificultad) console.log('🎯 Siguiente dificultad sugerida:', siguiente_dificultad);
 
       setTareaRespondida(true);
+
+      // Mascota reacciona según el resultado
+      if (correcto) {
+        setEmocionMascota('feliz');
+        setMensajeMascota('¡Muy bien! 🎉 Sigue así');
+      } else {
+        setEmocionMascota('triste');
+        setMensajeMascota('Ups, casi. ¡Intenta la siguiente! 💪');
+      }
+
     } catch (error) {
       console.error('❌ Error al responder tarea:', error);
       if (axios.isAxiosError(error) && error.response) {
         console.error('❌ Detalle del error:', error.response.data);
       }
+
+      setEmocionMascota('triste');
+      setMensajeMascota('¡Oh no! Hubo un problema 😔');
+
       alert('¡Error! Hubo un problema al enviar tu respuesta');
     } finally {
       setLoading(false);
@@ -77,13 +93,16 @@ const ResponderTareaScreen = ({ route, navigation }) => {
 
   return (
     <View style={styles.container}>
+      {mostrarMascota && (
+        <MascotaVirtual mensaje={mensajeMascota} emocion={emocionMascota} hablar />
+      )}
+
       <Text style={styles.title}>Responder Tarea</Text>
 
       {tareaActual ? (
         <>
           <Text style={styles.question}>{tareaActual.pregunta}</Text>
 
-          {/* 🔊 Botón para volver a escuchar awebo que si*/}
           <TouchableOpacity onPress={leerPregunta} style={{ marginBottom: 10 }}>
             <Text style={{ color: 'blue', textDecorationLine: 'underline' }}>🔊 Escuchar pregunta</Text>
           </TouchableOpacity>
