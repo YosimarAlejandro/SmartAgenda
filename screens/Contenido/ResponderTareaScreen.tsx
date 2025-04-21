@@ -2,24 +2,39 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet, Button } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-
+import * as Speech from 'expo-speech'; //este es el mpdulo de la lectura
 
 const ResponderTareaScreen = ({ route, navigation }) => {
   const { tarea } = route.params;
   const [respuesta, setRespuesta] = useState('');
   const [loading, setLoading] = useState(false);
   const [tareaActual, setTareaActual] = useState(tarea);
-  const [tareaRespondida, setTareaRespondida] = useState(false); // Nuevo estado para mostrar el botón
+  const [tareaRespondida, setTareaRespondida] = useState(false);
   const [siguienteTarea, setSiguienteTarea] = useState(null);
 
   useEffect(() => {
     if (route.params?.tarea) {
       setTareaActual(route.params.tarea);
       setRespuesta('');
-      setTareaRespondida(false); // Reinicia cuando la tarea cambie
+      setTareaRespondida(false);
     }
   }, [route.params?.tarea]);
+
+  // 👂 Función para leer en voz alta la pregunta
+  const leerPregunta = () => {
+    if (tareaActual?.pregunta) {
+      Speech.speak(tareaActual.pregunta, {
+        language: 'es-ES',
+        rate: 0.9,
+        pitch: 1.1,
+      });
+    }
+  };
+
+  // 🔁 Leer automáticamente la pregunta al cargar alo mejor y los quitamos quiensabe 😵‍💫
+  useEffect(() => {
+    leerPregunta();
+  }, [tareaActual]);
 
   const handleResponder = async () => {
     if (!respuesta.trim()) {
@@ -41,17 +56,14 @@ const ResponderTareaScreen = ({ route, navigation }) => {
       const { mensaje, siguiente_dificultad, siguiente_tarea } = res.data;
 
       if (siguiente_tarea) {
-        setSiguienteTarea(siguiente_tarea); // Guarda la siguiente tarea real
+        setSiguienteTarea(siguiente_tarea);
       }
-      
+
       if (siguiente_dificultad) {
         console.log('🎯 Siguiente dificultad sugerida:', siguiente_dificultad);
       }
-      
-      // ✅ Mostrar botón siempre que se haya respondido correctamente
-      setTareaRespondida(true);
-      
 
+      setTareaRespondida(true);
     } catch (error) {
       console.error('❌ Error al responder tarea:', error);
       if (axios.isAxiosError(error) && error.response) {
@@ -67,9 +79,15 @@ const ResponderTareaScreen = ({ route, navigation }) => {
     <View style={styles.container}>
       <Text style={styles.title}>Responder Tarea</Text>
 
-      {/* Asegúrate de que la tarea esté bien definida */}
       {tareaActual ? (
-        <Text style={styles.question}>{tareaActual.pregunta}</Text>
+        <>
+          <Text style={styles.question}>{tareaActual.pregunta}</Text>
+
+          {/* 🔊 Botón para volver a escuchar awebo que si*/}
+          <TouchableOpacity onPress={leerPregunta} style={{ marginBottom: 10 }}>
+            <Text style={{ color: 'blue', textDecorationLine: 'underline' }}>🔊 Escuchar pregunta</Text>
+          </TouchableOpacity>
+        </>
       ) : (
         <Text style={styles.question}>Cargando tarea...</Text>
       )}
@@ -85,7 +103,6 @@ const ResponderTareaScreen = ({ route, navigation }) => {
         {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Enviar Respuesta</Text>}
       </TouchableOpacity>
 
-      {/* Muestra el botón después de responder */}
       {tareaRespondida && (
         <View style={styles.responseContainer}>
           <Text style={styles.responseText}>¡Respuesta enviada con éxito!</Text>
@@ -99,9 +116,6 @@ const ResponderTareaScreen = ({ route, navigation }) => {
               }
             }}
           />
-
-
-
           <Button
             title="Volver al inicio"
             onPress={() => navigation.navigate('TareasScreen')}
